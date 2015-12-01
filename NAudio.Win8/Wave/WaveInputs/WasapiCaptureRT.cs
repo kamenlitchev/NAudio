@@ -157,7 +157,7 @@ namespace NAudio.Wave
         /// <summary>
         /// Start Recording
         /// </summary>
-        public async void StartRecording()
+        public void StartRecording()
         {
             stop = false;
 
@@ -166,9 +166,15 @@ namespace NAudio.Wave
             IActivateAudioInterfaceAsyncOperation activationOperation;
             // must be called on UI thread
             NativeMethods.ActivateAudioInterfaceAsync(device, IID_IAudioClient2, IntPtr.Zero, icbh, out activationOperation);
-            var audioClient2 = await icbh;
-            await Task.Run(() => DoRecording(new AudioClient((IAudioClient)audioClient2)));
-            
+            Task.Run(new Func<Task>(async () =>
+            {
+                IAudioClient audioClient2 = (IAudioClient)(await icbh);
+
+                // We do not need to await this one
+                Task.Run(() => DoRecording(new AudioClient(audioClient2)));
+            })).Wait();
+
+
             Debug.WriteLine("Recording...");
         }
 
