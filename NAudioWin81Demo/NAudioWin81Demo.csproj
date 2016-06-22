@@ -7,13 +7,13 @@
     <ProjectGuid>{03A0E22E-5B00-4B87-9CDF-20CC121DCF03}</ProjectGuid>
     <OutputType>AppContainerExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NAudioWin8Demo</RootNamespace>
-    <AssemblyName>NAudioWin8Demo</AssemblyName>
+    <RootNamespace>NAudioWin81Demo</RootNamespace>
+    <AssemblyName>NAudioWin81Demo</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{BC8A1FFA-BEE3-4634-8014-F334798102B3};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <PackageCertificateKeyFile>NAudioWin8Demo_TemporaryKey.pfx</PackageCertificateKeyFile>
-    <PackageCertificateThumbprint>C0C909F73647569B07025BC9A5FAD4FC97CCF345</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>D64925A299DAFE35EE51A22DD90720962D40B65D</PackageCertificateThumbprint>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
     <MinimumVisualStudioVersion>12</MinimumVisualStudioVersion>
     <TargetFrameworkVersion />
@@ -105,9 +105,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- A reference to the entire .Net Framework and Windows SDK are automatically included -->
-    <ProjectReference Include="..\NAudio.Win8\NAudio.Win8.csproj">
+    <ProjectReference Include="..\NAudio.Win81\NAudio.Win81.csproj">
       <Project>{90543F38-E793-40C3-972D-3271EBF1DEF4}</Project>
-      <Name>NAudio.Win8</Name>
+      <Name>NAudio.Win81</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

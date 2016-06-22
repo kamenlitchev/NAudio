@@ -114,13 +114,13 @@
     <None Include="project.json" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\NAudio.Win8\Wave\WaveInputs\WasapiCaptureRT.cs">
+    <Compile Include="..\NAudio.Win81\Wave\WaveInputs\WasapiCaptureRT.cs">
       <Link>Wave\WaveInputs\WasapiCaptureRT.cs</Link>
     </Compile>
-    <Compile Include="..\NAudio.Win8\Wave\WaveOutputs\WasapiOutRT.cs">
+    <Compile Include="..\NAudio.Win81\Wave\WaveOutputs\WasapiOutRT.cs">
       <Link>Wave\WaveOutputs\WasapiOutRT.cs</Link>
     </Compile>
-    <Compile Include="..\NAudio.Win8\Wave\WaveOutputs\WaveFileWriterRT.cs">
+    <Compile Include="..\NAudio.Win81\Wave\WaveOutputs\WaveFileWriterRT.cs">
       <Link>Wave\WaveOutputs\WaveFileWriterRT.cs</Link>
     </Compile>
     <Compile Include="..\NAudio\Codecs\ALawDecoder.cs">
