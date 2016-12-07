@@ -307,9 +307,11 @@ namespace NAudio.Win8.Wave.WaveOutputs
         /// <param name="provider"></param>
         /// <returns></returns>
         [Obsolete]
-        public async Task Init(IWaveProvider provider)
+        public Task Init(IWaveProvider provider)
         {
             Init(() => provider);
+
+            return Task.FromResult(true);
         }
 
         /// <summary>

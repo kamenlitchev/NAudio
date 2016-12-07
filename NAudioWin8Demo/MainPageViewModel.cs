@@ -48,7 +48,7 @@ namespace NAudioWin8Demo
             }
         }
 
-        private async void Play()
+        private void Play()
         {
             if (player == null)
             {
