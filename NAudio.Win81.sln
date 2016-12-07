@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F91DCE20-90A9-49A8-8773-CACECE651F37}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAudio.Win81", "NAudio.Win81\NAudio.Win81.csproj", "{90543F38-E793-40C3-972D-3271EBF1DEF4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAudio.Win8", "NAudio.Win8\NAudio.Win8.csproj", "{90543F38-E793-40C3-972D-3271EBF1DEF4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAudioWin81Demo", "NAudioWin81Demo\NAudioWin81Demo.csproj", "{03A0E22E-5B00-4B87-9CDF-20CC121DCF03}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAudioWin8Demo", "NAudioWin8Demo\NAudioWin8Demo.csproj", "{03A0E22E-5B00-4B87-9CDF-20CC121DCF03}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
