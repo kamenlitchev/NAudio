@@ -14,6 +14,14 @@ using Windows.Media.Devices;
 
 namespace NAudio.Wave
 {
+    enum WasapiCaptureState
+    {
+        Uninitialized,
+        Stopped,
+        Recording,
+        Disposed
+    }
+
     /// <summary>
     /// Audio Capture using Wasapi
     /// See http://msdn.microsoft.com/en-us/library/dd370800%28VS.85%29.aspx
@@ -23,12 +31,15 @@ namespace NAudio.Wave
         static readonly Guid IID_IAudioClient2 = new Guid("726778CD-F60A-4eda-82DE-E47610CD78AA");
         private const long REFTIMES_PER_SEC = 10000000;
         private const long REFTIMES_PER_MILLISEC = 10000;
-        private volatile bool stop;
+        private volatile WasapiCaptureState captureState;
         private byte[] recordBuffer;
         private readonly string device;
         private int bytesPerFrame;
         private WaveFormat waveFormat;
-        
+        private AudioClient audioClient;
+        private IntPtr hEvent;
+        private Task captureTask;
+
         /// <summary>
         /// Indicates recorded data is available 
         /// </summary>
@@ -109,7 +120,26 @@ namespace NAudio.Wave
             return defaultCaptureDeviceId;
         }
 
-        
+        /// <summary>
+        /// Initializes WASAPI the capture device. Must be called on the UI (STA) thread.
+        /// If not called manually then StartRecording() will call it internally.
+        /// </summary>
+        public async Task InitAsync()
+        {
+            if (captureState == WasapiCaptureState.Disposed) throw new ObjectDisposedException(nameof(WasapiCaptureRT));
+            if (captureState != WasapiCaptureState.Uninitialized) throw new InvalidOperationException("Already initialized");
+            
+            var icbh = new ActivateAudioInterfaceCompletionHandler(ac2 => InitializeCaptureDevice((IAudioClient)ac2));
+            IActivateAudioInterfaceAsyncOperation activationOperation;
+            // must be called on UI thread
+            NativeMethods.ActivateAudioInterfaceAsync(device, IID_IAudioClient2, IntPtr.Zero, icbh, out activationOperation);
+            audioClient = new AudioClient((IAudioClient)(await icbh));
+
+            hEvent = NativeMethods.CreateEventExW(IntPtr.Zero, IntPtr.Zero, 0, EventAccess.EVENT_ALL_ACCESS);
+            audioClient.SetEventHandle(hEvent);
+
+            captureState = WasapiCaptureState.Stopped;
+        }
 
         private void InitializeCaptureDevice(IAudioClient audioClientInterface)
         {
@@ -159,15 +189,12 @@ namespace NAudio.Wave
         /// </summary>
         public async void StartRecording()
         {
-            stop = false;
+            if (captureState == WasapiCaptureState.Disposed) throw new ObjectDisposedException(nameof(WasapiCaptureRT));
+            if (captureState == WasapiCaptureState.Uninitialized) await InitAsync();
 
-            var icbh = new ActivateAudioInterfaceCompletionHandler(ac2 => InitializeCaptureDevice((IAudioClient)ac2));
-            
-            IActivateAudioInterfaceAsyncOperation activationOperation;
-            // must be called on UI thread
-            NativeMethods.ActivateAudioInterfaceAsync(device, IID_IAudioClient2, IntPtr.Zero, icbh, out activationOperation);
-            var audioClient2 = await icbh;
-            await Task.Run(() => DoRecording(new AudioClient((IAudioClient)audioClient2)));
+            captureState = WasapiCaptureState.Recording;
+
+            captureTask = Task.Run(() => DoRecording());
             
             Debug.WriteLine("Recording...");
         }
@@ -177,31 +204,28 @@ namespace NAudio.Wave
         /// </summary>
         public void StopRecording()
         {
-            this.stop = true;
-            // todo: wait for thread to end
-            // todo: could signal the event
+            captureState = WasapiCaptureState.Stopped;
+            captureTask?.Wait();
+            Debug.WriteLine("WasapiCaptureRT stopped");
         }
 
-        private void DoRecording(AudioClient client)
+        private void DoRecording()
         {
-            Debug.WriteLine("Recording buffer size: " + client.BufferSize);
+            Debug.WriteLine("Recording buffer size: " + audioClient.BufferSize);
 
-            var buf = new Byte[client.BufferSize * bytesPerFrame];
+            var buf = new Byte[audioClient.BufferSize * bytesPerFrame];
 
             int bufLength = 0;
             int minPacketSize = waveFormat.AverageBytesPerSecond / 100; //100ms
-
-            IntPtr hEvent = NativeMethods.CreateEventExW(IntPtr.Zero, IntPtr.Zero, 0, EventAccess.EVENT_ALL_ACCESS);
-            client.SetEventHandle(hEvent);
-           
+                       
             try
             {
-                AudioCaptureClient capture = client.AudioCaptureClient;                
-                client.Start();
+                AudioCaptureClient capture = audioClient.AudioCaptureClient;
+                audioClient.Start();
 
                 int packetSize = capture.GetNextPacketSize();
 
-                while (!this.stop)
+                while (captureState == WasapiCaptureState.Recording)
                 {                    
                     IntPtr pData = IntPtr.Zero;
                     int numFramesToRead = 0;
@@ -260,19 +284,18 @@ namespace NAudio.Wave
             {
                 RaiseRecordingStopped(null);
                 
-                NativeMethods.CloseHandle(hEvent);
-                client.Stop();
-                client.Dispose();               
+                audioClient.Stop();
             }
+            Debug.WriteLine("stop wasapi");
         }
 
         private void RaiseRecordingStopped(Exception exception)
         {
-            var handler = RecordingStopped;
-            if (handler != null)
-            {
-                handler(this, new StoppedEventArgs(exception));
-            }
+            // Run on background thread, otherwise StopRecording():captureTask.Wait() 
+            // will deadlock if called from the UI thread
+            Task.Run(() => 
+                RecordingStopped?.Invoke(this, new StoppedEventArgs(exception))
+            );
         }
 
         private void ReadNextPacket(AudioCaptureClient capture)
@@ -323,7 +346,29 @@ namespace NAudio.Wave
         /// </summary>
         public void Dispose()
         {
+            if (captureState == WasapiCaptureState.Disposed) return;
+
             StopRecording();
+
+            try
+            {
+                if (hEvent != IntPtr.Zero)
+                {
+                    NativeMethods.CloseHandle(hEvent);
+                    hEvent = IntPtr.Zero;
+                }
+                
+                audioClient?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Exception disposing WasapiCaptureRT: " + ex.ToString());
+            }
+            
+            hEvent = IntPtr.Zero;
+            audioClient = null;
+
+            captureState = WasapiCaptureState.Disposed;
         }
     }
 }
