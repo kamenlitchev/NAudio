@@ -121,15 +121,15 @@ namespace NAudio.Wave
         }
 
         /// <summary>
-        /// Initializes WASAPI capture device. Must be called on UI/STA thread before StartRecording().
+        /// Initializes WASAPI the capture device. Must be called on the UI (STA) thread.
+        /// If not called manually then StartRecording() will call it internally.
         /// </summary>
         public async Task InitAsync()
         {
-            if (captureState != WasapiCaptureState.Disposed) throw new ObjectDisposedException(nameof(WasapiCaptureRT));
+            if (captureState == WasapiCaptureState.Disposed) throw new ObjectDisposedException(nameof(WasapiCaptureRT));
             if (captureState != WasapiCaptureState.Uninitialized) throw new InvalidOperationException("Already initialized");
             
             var icbh = new ActivateAudioInterfaceCompletionHandler(ac2 => InitializeCaptureDevice((IAudioClient)ac2));
-
             IActivateAudioInterfaceAsyncOperation activationOperation;
             // must be called on UI thread
             NativeMethods.ActivateAudioInterfaceAsync(device, IID_IAudioClient2, IntPtr.Zero, icbh, out activationOperation);
@@ -206,7 +206,7 @@ namespace NAudio.Wave
         {
             captureState = WasapiCaptureState.Stopped;
             captureTask?.Wait();
-            Debug.WriteLine("STOPPED");
+            Debug.WriteLine("WasapiCaptureRT stopped");
         }
 
         private void DoRecording()
@@ -291,8 +291,8 @@ namespace NAudio.Wave
 
         private void RaiseRecordingStopped(Exception exception)
         {
-            // Run on background thread, otherwise StopRecording():captureTask.Wait()
-            // line will deadlock if called from the UI thread
+            // Run on background thread, otherwise StopRecording():captureTask.Wait() 
+            // will deadlock if called from the UI thread
             Task.Run(() => 
                 RecordingStopped?.Invoke(this, new StoppedEventArgs(exception))
             );
@@ -350,13 +350,22 @@ namespace NAudio.Wave
 
             StopRecording();
 
-            if (hEvent != IntPtr.Zero)
+            try
             {
-                NativeMethods.CloseHandle(hEvent);
-                hEvent = IntPtr.Zero;
+                if (hEvent != IntPtr.Zero)
+                {
+                    NativeMethods.CloseHandle(hEvent);
+                    hEvent = IntPtr.Zero;
+                }
+                
+                audioClient?.Dispose();
             }
-
-            audioClient?.Dispose();
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Exception disposing WasapiCaptureRT: " + ex.ToString());
+            }
+            
+            hEvent = IntPtr.Zero;
             audioClient = null;
 
             captureState = WasapiCaptureState.Disposed;
