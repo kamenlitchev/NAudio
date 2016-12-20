@@ -39,6 +39,7 @@ namespace NAudio.Wave
         private AudioClient audioClient;
         private IntPtr hEvent;
         private Task captureTask;
+        private SynchronizationContext syncContext;
 
         /// <summary>
         /// Indicates recorded data is available 
@@ -66,6 +67,7 @@ namespace NAudio.Wave
         public WasapiCaptureRT(string device)
         {
             this.device = device;
+            this.syncContext = SynchronizationContext.Current;
             //this.waveFormat = audioClient.MixFormat;
         }
 
@@ -121,7 +123,7 @@ namespace NAudio.Wave
         }
 
         /// <summary>
-        /// Initializes WASAPI the capture device. Must be called on the UI (STA) thread.
+        /// Initializes the capture device. Must be called on the UI (STA) thread.
         /// If not called manually then StartRecording() will call it internally.
         /// </summary>
         public async Task InitAsync()
@@ -195,7 +197,7 @@ namespace NAudio.Wave
             captureState = WasapiCaptureState.Recording;
 
             captureTask = Task.Run(() => DoRecording());
-            
+
             Debug.WriteLine("Recording...");
         }
 
@@ -204,8 +206,11 @@ namespace NAudio.Wave
         /// </summary>
         public void StopRecording()
         {
+            if (captureState == WasapiCaptureState.Disposed) throw new ObjectDisposedException(nameof(WasapiCaptureRT));
+            if (captureState != WasapiCaptureState.Recording) return;
+
             captureState = WasapiCaptureState.Stopped;
-            captureTask?.Wait();
+            captureTask?.Wait(5000);
             Debug.WriteLine("WasapiCaptureRT stopped");
         }
 
@@ -291,11 +296,18 @@ namespace NAudio.Wave
 
         private void RaiseRecordingStopped(Exception exception)
         {
-            // Run on background thread, otherwise StopRecording():captureTask.Wait() 
-            // will deadlock if called from the UI thread
-            Task.Run(() => 
-                RecordingStopped?.Invoke(this, new StoppedEventArgs(exception))
-            );
+            var handler = RecordingStopped;
+            if (handler != null)
+            {
+                if (this.syncContext == null)
+                {
+                    handler(this, new StoppedEventArgs(exception));
+                }
+                else
+                {
+                    syncContext.Post(state => handler(this, new StoppedEventArgs(exception)), null);
+                }
+            }
         }
 
         private void ReadNextPacket(AudioCaptureClient capture)
@@ -348,16 +360,11 @@ namespace NAudio.Wave
         {
             if (captureState == WasapiCaptureState.Disposed) return;
 
-            StopRecording();
-
             try
             {
-                if (hEvent != IntPtr.Zero)
-                {
-                    NativeMethods.CloseHandle(hEvent);
-                    hEvent = IntPtr.Zero;
-                }
-                
+                StopRecording();
+
+                NativeMethods.CloseHandle(hEvent);
                 audioClient?.Dispose();
             }
             catch (Exception ex)
