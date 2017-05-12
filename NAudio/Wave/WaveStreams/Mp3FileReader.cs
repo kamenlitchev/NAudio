@@ -263,7 +263,9 @@ namespace NAudio.Wave
         /// <returns>Next mp3 frame, or null if EOF</returns>
         public Mp3Frame ReadNextFrame()
         {
-            return ReadNextFrame(true);
+            var frame = ReadNextFrame(true);
+            if (frame != null) position += frame.SampleCount*bytesPerSample;
+            return frame;
         }
 
         /// <summary>
@@ -455,10 +457,7 @@ namespace NAudio.Wave
         /// <summary>
         /// Xing header if present
         /// </summary>
-        public XingHeader XingHeader
-        {
-            get { return xingHeader; }
-        }
+        public XingHeader XingHeader => xingHeader;
 
         /// <summary>
         /// Disposes this WaveStream
